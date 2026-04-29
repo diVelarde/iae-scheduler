@@ -15,5 +15,6 @@ model Schedule {
   day         String
   start_time  DateTime
   end_time    DateTime
+
   created_at  DateTime @default(now())
 }
