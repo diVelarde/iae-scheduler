@@ -50,4 +50,87 @@ router.get("/", async (req, res) => {
   }
 });
 
+router.post("/generate", async (req, res) => {
+  try {
+    const courses = await pool.query("SELECT * FROM courses");
+    const rooms = await pool.query("SELECT * FROM rooms");
+
+    const days = ["Monday", "Tuesday", "Wednesday"];
+    const timeSlots = [
+      { start: "08:00", end: "10:00" },
+      { start: "10:00", end: "12:00" },
+      { start: "13:00", end: "15:00" },
+      { start: "15:00", end: "17:00" }
+    ];
+
+    const generated = [];
+
+    for (const course of courses.rows) {
+      let scheduled = false;
+
+      for (const day of days) {
+        for (const slot of timeSlots) {
+          for (const room of rooms.rows) {
+
+            if (room.capacity < course.student_count) continue;
+
+            const conflict = await pool.query(
+              `SELECT * FROM schedules
+               WHERE room_id = $1
+               AND day = $2
+               AND ($3 < end_time AND $4 > start_time)`,
+              [
+                room.room_id,
+                day,
+                `2026-05-01 ${slot.start}:00`,
+                `2026-05-01 ${slot.end}:00`
+              ]
+            );
+
+            if (conflict.rows.length === 0) {
+              const result = await pool.query(
+                `INSERT INTO schedules 
+                (course_code, section, room_id, day, start_time, end_time)
+                VALUES ($1, $2, $3, $4, $5, $6)
+                RETURNING *`,
+                [
+                  course.course_code,
+                  course.section,
+                  room.room_id,
+                  day,
+                  `2026-05-01 ${slot.start}:00`,
+                  `2026-05-01 ${slot.end}:00`
+                ]
+              );
+
+              generated.push(result.rows[0]);
+              scheduled = true;
+              break;
+            }
+          }
+          if (scheduled) break;
+        }
+        if (scheduled) break;
+      }
+
+      if (!scheduled) {
+        generated.push({
+          course: course.course_code,
+          status: "FAILED - No available slot"
+        });
+      }
+    }
+
+    res.json({
+      message: "Schedule generated successfully",
+      total: generated.length,
+      data: generated
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error generating schedule");
+  }
+});
+
 module.exports = router;
