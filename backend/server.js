@@ -1,11 +1,13 @@
 const express = require("express");
+const cors = require("cors");
 const pool = require("./db");
 const scheduleRoutes = require("./routes/scheduleRoutes");
 
 const app = express();
+
+app.use(cors()); 
 app.use(express.json());
 
-// use routes
 app.use("/api/schedules", scheduleRoutes);
 
 app.get("/", async (req, res) => {
