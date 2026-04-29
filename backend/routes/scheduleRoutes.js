@@ -133,4 +133,26 @@ router.post("/generate", async (req, res) => {
   }
 });
 
+router.delete("/reset", async (req, res) => {
+  const { confirm } = req.body;
+
+  if (confirm !== "YES") {
+    return res.status(400).json({
+      message: "Reset not confirmed. Send { confirm: 'YES' }"
+    });
+  }
+
+  try {
+    await pool.query("TRUNCATE TABLE schedules RESTART IDENTITY");
+
+    res.json({
+      message: "System reset complete"
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error resetting system");
+  }
+});
+
 module.exports = router;
