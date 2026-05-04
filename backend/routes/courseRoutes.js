@@ -4,7 +4,7 @@ const pool = require("../config/db");
 const axios = require("axios");
 
 // ─── GET /api/courses/offerings ───────────────────────────────────────────────
-router.get("/offerings", async (req, res) => {
+/*router.get("/offerings", async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT course_code, section, units, section_capacity, semester
@@ -15,6 +15,31 @@ router.get("/offerings", async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Error fetching course offerings" });
+  }
+});*/
+
+// POST /api/courses/offerings — manual add (temporary for testing)
+router.post("/offerings", async (req, res) => {
+  try {
+    const { course_code, section, units, section_capacity, semester } = req.body;
+
+    if (!course_code || !section || !units || !section_capacity || !semester) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    const result = await pool.query(
+      `INSERT INTO course_offerings (course_code, section, units, section_capacity, semester)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (course_code, section, semester)
+       DO UPDATE SET units = EXCLUDED.units, section_capacity = EXCLUDED.section_capacity
+       RETURNING *`,
+      [course_code, section, units, section_capacity, semester]
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Error saving course offering" });
   }
 });
 
