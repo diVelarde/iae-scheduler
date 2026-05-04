@@ -35,6 +35,19 @@ app.get("/", async (req, res) => {
   }
 });
 
+app.get("/setup-courses", async (req, res) => {
+  try {
+    const pool = require("./config/db");
+    await pool.query(`
+      ALTER TABLE course_offerings 
+      ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW()
+    `);
+    res.json({ message: "course_offerings table updated!" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
